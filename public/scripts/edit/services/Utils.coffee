@@ -3,9 +3,7 @@ app.factory('Utils', ['$rootScope', ($rootScope) ->
   Editor = undefined
   
   # ======================== 
-  
   # ====== INITIALIZE ====== 
-  
   # ======================== 
   Utils.initialize = ->
     Editor = $rootScope.Editor

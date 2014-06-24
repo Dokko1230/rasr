@@ -17,10 +17,12 @@ app.factory "Auth", Auth = ($location, $rootScope, Session, User, $cookieStore) 
       password: user.password
     , (user) ->
       console.log "troll", user
+      debugger
       $rootScope.currentUser = user
+      # $cookieStore.put('user', )
       window.userData = Object.freeze(user)
       console.log($cookieStore.get("user"), $cookieStore);
-      cb()
+      do cb
     , (err) ->
       cb err
     ).$promise

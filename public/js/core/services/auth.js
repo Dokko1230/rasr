@@ -25,6 +25,7 @@
           password: user.password
         }, function(user) {
           console.log("troll", user);
+          debugger;
           $rootScope.currentUser = user;
           window.userData = Object.freeze(user);
           console.log($cookieStore.get("user"), $cookieStore);
