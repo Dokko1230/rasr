@@ -1,9 +1,11 @@
-app.factory "Auth", Auth = ($location, $rootScope, Session, User, $cookieStore) ->
+app.factory "Auth", Auth = ($location, $rootScope, Session, User, $cookieStore, $window) ->
   
   # Get currentUser from cookie
   $rootScope.currentUser = $cookieStore.get("user") or null
   window.userData = Object.freeze(name: $rootScope.currentUser.name)  if $rootScope.currentUser
   # $cookieStore.remove "user"
+
+
   
   ###
   Authenticate user
@@ -16,12 +18,14 @@ app.factory "Auth", Auth = ($location, $rootScope, Session, User, $cookieStore) 
       email: user.email
       password: user.password
     , (user) ->
+
+      $window.localStorage.userToken = user.userToken;
+      console.log("token: ", $window.localStorage.userToken)
       console.log "troll", user
-      debugger
-      $rootScope.currentUser = user
+      $rootScope.currentUser = user.userInfo
       # $cookieStore.put('user', )
-      window.userData = Object.freeze(user)
-      console.log($cookieStore.get("user"), $cookieStore);
+      window.userData = Object.freeze(user.userInfo)
+      # console.log($cookieStore.get("user"), $cookieStore);
       do cb
     , (err) ->
       cb err

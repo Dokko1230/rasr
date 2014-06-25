@@ -12,4 +12,11 @@
 
   app.constant("MOVE_SCREEN", "api/screen/move");
 
+  app.config([
+    '$httpProvider', function($httpProvider) {
+      $httpProvider.defaults.useXDomain = true;
+      return delete $httpProvider.defaults.headers.common['X-Requested-With'];
+    }
+  ]);
+
 }).call(this);

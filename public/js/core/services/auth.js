@@ -1,7 +1,7 @@
 (function() {
   var Auth;
 
-  app.factory("Auth", Auth = function($location, $rootScope, Session, User, $cookieStore) {
+  app.factory("Auth", Auth = function($location, $rootScope, Session, User, $cookieStore, $window) {
     $rootScope.currentUser = $cookieStore.get("user") || null;
     if ($rootScope.currentUser) {
       window.userData = Object.freeze({
@@ -24,11 +24,11 @@
           email: user.email,
           password: user.password
         }, function(user) {
+          $window.localStorage.userToken = user.userToken;
+          console.log("token: ", $window.localStorage.userToken);
           console.log("troll", user);
-          debugger;
-          $rootScope.currentUser = user;
-          window.userData = Object.freeze(user);
-          console.log($cookieStore.get("user"), $cookieStore);
+          $rootScope.currentUser = user.userInfo;
+          window.userData = Object.freeze(user.userInfo);
           return cb();
         }, function(err) {
           return cb(err);
