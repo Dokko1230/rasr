@@ -1,12 +1,10 @@
 app.factory "Auth", Auth = ($location, $rootScope, Session, User, $cookieStore, $window) ->
   
   # Get currentUser from cookie
-  $rootScope.currentUser = $cookieStore.get("user") or null
-  window.userData = Object.freeze(name: $rootScope.currentUser.name)  if $rootScope.currentUser
+  # $rootScope.currentUser = $cookieStore.get("user") or null
+  # window.userData = Object.freeze(name: $rootScope.currentUser.name)  if $rootScope.currentUser
   # $cookieStore.remove "user"
 
-
-  
   ###
   Authenticate user
   param  {Object}   user     - login info
@@ -18,6 +16,7 @@ app.factory "Auth", Auth = ($location, $rootScope, Session, User, $cookieStore, 
       email: user.email
       password: user.password
     , (user) ->
+      debugger;
 
       $window.localStorage.userToken = user.userToken;
       console.log("token: ", $window.localStorage.userToken)
@@ -96,5 +95,6 @@ app.factory "Auth", Auth = ($location, $rootScope, Session, User, $cookieStore, 
   return {Boolean}
   ###
   isLoggedIn: ->
-    user = $rootScope.currentUser
-    !!user
+    # user = $rootScope.currentUser
+    # !!user
+    return !!$window.localStorage.userToken

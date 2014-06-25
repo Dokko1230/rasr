@@ -2,12 +2,6 @@
   var Auth;
 
   app.factory("Auth", Auth = function($location, $rootScope, Session, User, $cookieStore, $window) {
-    $rootScope.currentUser = $cookieStore.get("user") || null;
-    if ($rootScope.currentUser) {
-      window.userData = Object.freeze({
-        name: $rootScope.currentUser.name
-      });
-    }
     return {
       /*
       Authenticate user
@@ -24,6 +18,7 @@
           email: user.email,
           password: user.password
         }, function(user) {
+          debugger;
           $window.localStorage.userToken = user.userToken;
           console.log("token: ", $window.localStorage.userToken);
           console.log("troll", user);
@@ -107,9 +102,7 @@
       */
 
       isLoggedIn: function() {
-        var user;
-        user = $rootScope.currentUser;
-        return !!user;
+        return !!$window.localStorage.userToken;
       }
     };
   });
