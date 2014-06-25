@@ -6,11 +6,13 @@
 
   app.constant("SERVER_URL", "http://localhost:3000");
 
-  app.constant("GET_SCREEN", "api/screen/get");
+  app.constant("GET_SCREEN", "/api/screen");
 
-  app.constant("SAVE_SCREEN", "api/screen/save");
+  app.constant("MOVE_SCREEN", "/api/screen/move");
 
-  app.constant("MOVE_SCREEN", "api/screen/move");
+  app.constant("MAKE_SCREEN", "/api/screen/make");
+
+  app.constant("GET_SESSION", "/api/session");
 
   app.config([
     '$httpProvider', function($httpProvider) {

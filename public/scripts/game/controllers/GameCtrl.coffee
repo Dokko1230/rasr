@@ -1,25 +1,30 @@
 'use strict'
 
-app.controller 'GameCtrl', ['$scope', 'User', 'Auth', 'Hero', 'Enemy', 'Player', 'Events', 'Socket', 'PlayerAPI', 'MapAPI'
- ($scope, User, Auth, Hero, Enemy, Player, Events, Socket, PlayerAPI, MapAPI) ->
+app.controller 'GameCtrl', ['$scope', 'User', 'Auth', 'Map', 'Hero', 'Enemy', 'Player', 'Events', 'Socket', 'PlayerAPI', 'MapAPI', 'SERVER_URL'
+ ($scope, User, Auth, Map, Hero, Enemy, Player, Events, Socket, PlayerAPI, MapAPI, SERVER_URL) ->
   $scope.currentUser = window.userData || {name: "test"}
-
   $scope.chats = []
-
   $scope.sendChat = ->
-    $scope.chats.unshift(
+    chat = 
       user: $scope.currentUser.name
       message: $scope.chatToSend
-    )
-    $scope.chatToSend = ''
-    do $scope.chats.pop while $scope.chats.length > 100
+    game.message chat
 
+  $scope.borders = 
+    up: true
+    right: true
+    down: true
+    left: true
+
+  $scope.makeMap = (direction) ->
+    console.log(direction)
+    MapAPI.makeMap().get({direction: direction, mapId: mapId})
 
   app = Events({})
   window.game = game = null
   hero = null
   map = null
-  players = Events({})
+  players = {}
   mapId = null
   initialMap = null
   upScreen = null
@@ -29,23 +34,24 @@ app.controller 'GameCtrl', ['$scope', 'User', 'Auth', 'Hero', 'Enemy', 'Player',
   png = null
   rootUrl = ''
   user = $scope.currentUser.name
-  initPos = {}
+  init = {}
   explosions = null
   
   # MAKE INITIAL AJAX CALL FOR PLAYER INFO
   initialize = ->
     PlayerAPI.get (playerInfo) ->
       mapId = playerInfo.mapId
-      initPos.x = playerInfo.x
-      initPos.y = playerInfo.y
+      init.x = playerInfo.x
+      init.y = playerInfo.y
+      init.xp = playerInfo.xp
+      init.speed = playerInfo.speed
+      init.png = playerInfo.png || 'roshan'
 
-      png = playerInfo.png || 'roshan'
       $scope.mapId = mapId
-      # $('#map-id').attr('href', '/edit/' + mapId);
-      url = "/screen/#{mapId}"
-      MapAPI.getMap(mapId).get (mapData) ->
+
+      MapAPI.getMap().get {mapId: mapId}, (mapData) ->
         initialMap = mapData
-        # $('.creatables')
+        console.log(mapData)
         game = new Phaser.Game(800, 600, Phaser.AUTO, "game-canvas",
           preload: preload
           create: create
@@ -60,7 +66,7 @@ app.controller 'GameCtrl', ['$scope', 'User', 'Auth', 'Hero', 'Enemy', 'Player',
 
   preload = ->
 
-    game.load.atlasXML "enemy", "images/enemy.png", "images/enemy.xml"
+    game.load.atlasXML "enemy", "assets/enemy.png", "assets/enemy.xml"
     hero = Events(Hero(game, Phaser, {
       exp: 150
       health: 100
@@ -69,16 +75,18 @@ app.controller 'GameCtrl', ['$scope', 'User', 'Auth', 'Hero', 'Enemy', 'Player',
       dex: 10
       int: 10
       luk: 10
-      x: initPos.x
-      y: initPos.y
-      png: png
+      x: init.x
+      y: init.y
+      png: init.png
+      speed: init.speed
     }))
     # window.hero = hero
-    map = Events(Map(game, Phaser, mapId, $))
+    map = Events(Map(game, Phaser, mapId))
     game.user = user
     game.map = map
-    Socket rootUrl, game, players, Phaser
-    game.load.spritesheet 'kaboom', 'images/explosion.png', 64, 64, 23
+    Socket SERVER_URL, game, players, Phaser
+    game.load.spritesheet 'kaboom', 'assets/explosion.png', 64, 64, 23
+    console.log(hero)
     hero.preload()
     map.preload(null, initialMap)
 
@@ -87,22 +95,22 @@ app.controller 'GameCtrl', ['$scope', 'User', 'Auth', 'Hero', 'Enemy', 'Player',
 
     window.game = game
     game.hero = hero
+    game._createCtrls = _createCtrls
+    game.addChat = addChat
 
   create = ->
     map.create()
     hero.create()
     game.hero = hero
     createExplosions()
-    render()
+    # render()
 
     map.on 'finishLoad', =>
-      hero.arrows.destroy()
+      hero.arrow.arrows.destroy()
       hero.createArrows()
       createExplosions()
       app.isLoaded = true
       render()
-
-
 
     console.log "Joining #{game.mapId} on #{hero.sprite.x},#{hero.sprite.y}"
 
@@ -125,35 +133,46 @@ app.controller 'GameCtrl', ['$scope', 'User', 'Auth', 'Hero', 'Enemy', 'Player',
       enemies: enemies
       positions: enemyPositions
 
+    game.trigger 'login'
+    game.stage.disableVisibilityChange = true
+
   render = ->
     game.layerRendering = game.add.group()
     game.layerRendering.add(map.layers[0])
     game.layerRendering.add(map.layers[1])
     game.layerRendering.add(map.layers[2])
     game.layerRendering.add(hero.sprite)
-    game.layerRendering.add(hero.arrows)
+    game.layerRendering.add(hero.arrow.arrows)
     game.layerRendering.add(explosions)
     game.layerRendering.add(map.layers[3])
-    hero.sprite.bringToTop();
+    # hero.sprite.bringToTop();
+    for layer in map.layers
+      map.collisionLayer = layer if layer.name = 'collision'
+
 
   update = ->
     if app.isLoaded
       map.update()
       hero.update()
+      game.physics.arcade.collide(hero.sprite, map.collisionLayer)
+      game.physics.arcade.collide(hero.arrow.arrows, map.collisionLayer, tileCollision)
+      game.physics.arcade.collide(hero.arrow.arrows, hero.sprite, arrowHurt, null, hero)
+      # game.physics.arcade.collide(hero.arrow.arrows, player.sprite, arrowHurt, null, player)
       for enemy in game.enemies
         if enemy.alive
           hero.sprite.facing = hero.facing
           game.physics.arcade.collide(hero.sprite, enemy.sprite, hurtHero, null, hero)
-          game.physics.arcade.collide(hero.arrows, hero.sprite, arrowHurt, null, hero)
-          # game.physics.arcade.collide(hero.arrows, player.sprite, arrowHurt, null, player)
-          game.physics.arcade.collide(hero.arrows, enemy.sprite, arrowHurt, null, enemy)
-
+          game.physics.arcade.collide(hero.arrow.arrows, enemy.sprite, arrowHurt, null, enemy)
+          game.physics.arcade.collide(enemy.sprite, map.collisionLayer)
           enemy.update()
       for player of players
         if player.update then do player.update
 
   hurtHero = (heroSprite, enemySprite) ->
     @damage()
+
+  tileCollision = (arrow, tile) ->
+    arrow.kill()
 
   arrowHurt = (sprite, arrow) ->
     explosion.call(@)
@@ -170,8 +189,30 @@ app.controller 'GameCtrl', ['$scope', 'User', 'Auth', 'Hero', 'Enemy', 'Player',
 
   explosion = ->
     explosionAnimation = explosions.getFirstExists(false)
-    explosionAnimation.reset(@sprite.x, @sprite.y)
-    explosionAnimation.play('kaboom', 30, false, true)
+    if explosionAnimation
+      explosionAnimation.reset(@sprite.x, @sprite.y)
+      explosionAnimation.play('kaboom', 30, false, true)
+
+  addChat = (chat) ->
+    $scope.chats.push chat
+    $scope.chatToSend = ''
+    do $scope.chats.shift while $scope.chats.length > 100
+
+
+  _createCtrls = (data) ->
+    $scope.mapId = map.mapId
+    borders = 
+      upScreen: data.upScreen
+      rightScreen: data.rightScreen
+      downScreen: data.downScreen
+      leftScreen: data.leftScreen
+
+    $scope.$apply ->
+      for border, value of borders
+        borderDirection = border.split('Screen')[0]
+        $scope.borders[borderDirection] = !!value
+        map.game.physics.arcade.checkCollision[borderDirection] = !value  
+    
 
   do initialize
 
